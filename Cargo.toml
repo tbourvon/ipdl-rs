@@ -1,5 +1,5 @@
 [package]
-name = "ipdl-rs"
+name = "ipdl"
 version = "0.1.0"
 authors = ["Tristan Bourvon <tristanbourvon@gmail.com>", "Andrew McCreight <continuation@gmail.com>"]
 license = "MPL-2.0"
