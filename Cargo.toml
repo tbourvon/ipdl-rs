@@ -6,7 +6,7 @@ license = "MPL-2.0"
 
 [dependencies]
 pipdl = { git = "https://github.com/tbourvon/pipdl-rs" }
-getopts = "0.2"
+getopts = "*"
 
 [lib]
 name = "ipdl"
