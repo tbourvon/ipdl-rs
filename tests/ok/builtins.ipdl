@@ -15,7 +15,5 @@ child: async Msg(bool b,
            int16_t i16t,
            uint16_t u16t,
            int32_t i32t,
-           uint32_t u32t,
-           int64_t i64t,
-           uint64_t u64t);
+           uint32_t u32t);
 };

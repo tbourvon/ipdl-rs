@@ -55,7 +55,7 @@ impl<'a> IncludeResolver<'a> {
     }
 
     #[allow(needless_pass_by_value)]
-    pub fn resolve_includes(&mut self, parse_tree: ParseTree) -> Result<HashMap<TUId, ParseTree>, Errors> {
+    pub fn resolve_includes(&mut self, parse_tree: ParseTree) -> Result<(TUId, HashMap<TUId, ParseTree>), Errors> {
         let canonical_file_path = match parse_tree.file_path.canonicalize() {
             Ok(cfp) => cfp,
             Err(_) => {
@@ -120,7 +120,7 @@ impl<'a> IncludeResolver<'a> {
             work_list = new_work_list;
         }
 
-        Ok(parsed_files)
+        Ok((file_id, parsed_files))
     }
 
 }

@@ -1,6 +1,8 @@
+#![allow(unknown_lints)]
+
 extern crate pipdl;
 
-pub mod parser;
-mod ast;
-mod passes;
+pub mod ast;
 mod errors;
+pub mod parser;
+mod passes;

@@ -4,6 +4,7 @@
 
 use std::path::{Path, PathBuf};
 use std::fmt;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
 pub struct QualifiedId {
@@ -71,18 +72,6 @@ impl TypeSpec {
         TypeSpec { spec: spec, array: false, nullable: false }
     }
 
-    // XXX Get rid of these setters if the fields are just public anyways?
-
-    pub fn set_array(mut self, is_array: bool) -> TypeSpec {
-        self.array = is_array;
-        self
-    }
-
-    pub fn set_nullable(mut self, is_nullable: bool) -> TypeSpec {
-        self.nullable = is_nullable;
-        self
-    }
-
     pub fn loc(&self) -> &Location {
         self.spec.loc()
     }
@@ -94,22 +83,10 @@ pub struct Param {
     pub type_spec: TypeSpec,
 }
 
-impl Param {
-    pub fn new(type_spec: TypeSpec, name: Identifier) -> Param {
-        Param { name: name, type_spec: type_spec }
-    }
-}
-
 #[derive(Debug)]
 pub struct StructField {
     pub type_spec: TypeSpec,
     pub name: Identifier,
-}
-
-impl StructField {
-    pub fn new(ty: TypeSpec, name: Identifier) -> StructField {
-        StructField { type_spec: ty, name: name }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -119,14 +96,6 @@ pub struct Namespace {
 }
 
 impl Namespace {
-    pub fn new(name: Identifier) -> Namespace {
-        Namespace { name: name, namespaces: Vec::new() }
-    }
-
-    pub fn add_outer_namespace(&mut self, namespace: &str) {
-        self.namespaces.insert(0, String::from(namespace));
-    }
-
     pub fn qname(&self) -> QualifiedId {
         QualifiedId { base_id: self.name.clone(), quals: self.namespaces.clone() }
     }
@@ -137,12 +106,6 @@ pub enum Compress {
     None,
     Enabled,
     All,
-}
-
-#[derive(Debug)]
-pub enum MessageModifier {
-    Verify,
-    Compress(Compress),
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -202,10 +165,6 @@ pub enum Direction {
 }
 
 impl Direction {
-    pub fn is_to_parent(&self) -> bool {
-        self == &Direction::ToParent
-    }
-
     pub fn is_to_child(&self) -> bool {
         self == &Direction::ToChild
     }
@@ -262,39 +221,6 @@ pub struct MessageDecl {
     pub verify: bool,
 }
 
-impl MessageDecl {
-    pub fn new(name: Identifier) -> MessageDecl {
-        MessageDecl {
-            name: name,
-            send_semantics: SendSemantics::Async,
-            nested: Nesting::None,
-            prio: Priority::Normal,
-            direction: Direction::ToParent,
-            in_params: Vec::new(),
-            out_params: Vec::new(),
-            compress: Compress::None,
-            verify: false,
-        }
-    }
-
-    pub fn add_in_params(&mut self, mut in_params: Vec<Param>) {
-        self.in_params.append(&mut in_params);
-    }
-
-    pub fn add_out_params(&mut self, mut out_params: Vec<Param>) {
-        self.out_params.append(&mut out_params);
-    }
-
-    pub fn add_modifiers(&mut self, modifiers: Vec<MessageModifier>) {
-        for modifier in modifiers {
-            match modifier {
-                MessageModifier::Compress(c) => self.compress = c,
-                MessageModifier::Verify => self.verify = true,
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct Protocol {
     pub send_semantics: SendSemantics,
@@ -302,14 +228,6 @@ pub struct Protocol {
     pub managers: Vec<Identifier>,
     pub manages: Vec<Identifier>,
     pub messages: Vec<MessageDecl>,
-}
-
-impl Protocol {
-    pub fn new(send_semantics: SendSemantics, nested: Nesting,
-               managers: Vec<Identifier>, manages: Vec<Identifier>, decls: Vec<MessageDecl>) -> Protocol {
-        Protocol { send_semantics: send_semantics, nested: nested,
-                   managers: managers, manages: manages, messages: decls }
-    }
 }
 
 #[derive(Debug)]
@@ -363,5 +281,6 @@ pub struct TranslationUnit {
 }
 
 pub struct AST {
-    pub translation_unit: TranslationUnit,
+    pub main_tuid: TUId,
+    pub translation_units: HashMap<TUId, TranslationUnit>,
 }

@@ -1,16 +1,18 @@
-use std::path::{Path, PathBuf};
 use std::fs::File;
 use std::io::Read;
+use std::path::{Path, PathBuf};
 
 use pipdl;
 
 use passes::include_resolution::IncludeResolver;
-use passes::parsetree_to_ast::ParseTreeToAST;
+use passes::parsetree_to_tu::ParseTreeToTU;
 use passes::type_check;
 
 use errors;
 
 use std::collections::HashMap;
+
+use ast::AST;
 
 #[derive(Clone)]
 pub struct ParseTree {
@@ -22,7 +24,8 @@ pub fn parse_file(file_path: &Path) -> Result<ParseTree, pipdl::Error> {
     let mut file = File::open(file_path).expect("Cannot open file for parsing");
 
     let mut file_text = String::new();
-    file.read_to_string(&mut file_text).expect("Cannot read file for parsing");
+    file.read_to_string(&mut file_text)
+        .expect("Cannot read file for parsing");
 
     let parse_tree = ParseTree {
         translation_unit: pipdl::parse(&file_text, file_path)?,
@@ -32,20 +35,31 @@ pub fn parse_file(file_path: &Path) -> Result<ParseTree, pipdl::Error> {
     Ok(parse_tree)
 }
 
-pub fn parse(file_path: &Path, include_dirs: &[PathBuf]) -> Result<(), errors::Errors> {
+pub fn parse(file_path: &Path, include_dirs: &[PathBuf]) -> Result<AST, errors::Errors> {
     let parse_tree = parse_file(file_path)?;
 
     let mut include_resolver = IncludeResolver::new(include_dirs);
 
-    let result = include_resolver.resolve_includes(parse_tree)?;
+    let (main_tuid, result) = include_resolver.resolve_includes(parse_tree)?;
 
-    let parsetree_to_ast = ParseTreeToAST::new(&include_resolver);
+    let parsetree_to_translation_unit = ParseTreeToTU::new(&include_resolver);
 
-    let result = result.into_iter().map(|(tuid, parse_tree)| {
-        Ok((tuid, parsetree_to_ast.parsetree_to_ast(parse_tree)?.translation_unit))
-    }).collect::<Result<HashMap<_, _>, errors::Errors>>()?;
+    let ast = AST {
+        main_tuid,
+        translation_units: {
+            result
+                .into_iter()
+                .map(|(tuid, parse_tree)| {
+                    Ok((
+                        tuid,
+                        parsetree_to_translation_unit.parsetree_to_translation_unit(parse_tree)?,
+                    ))
+                })
+                .collect::<Result<HashMap<_, _>, errors::Errors>>()?
+        },
+    };
 
-    type_check::check(&result)?;
+    type_check::check(&ast.translation_units)?;
 
-    Ok(())
+    Ok(ast)
 }
