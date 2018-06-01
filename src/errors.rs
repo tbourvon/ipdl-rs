@@ -1,6 +1,10 @@
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 use ast::Location;
-use std::error::Error;
 use pipdl;
+use std::error::Error;
 use std::fmt;
 
 fn error_msg(loc: &Location, err: &str) -> String {
@@ -9,12 +13,19 @@ fn error_msg(loc: &Location, err: &str) -> String {
 
 #[must_use]
 pub struct Errors {
-    errors: Vec<String>
+    errors: Vec<String>,
 }
 
 impl From<pipdl::Error> for Errors {
     fn from(error: pipdl::Error) -> Self {
-        Errors::one(&Location { file_name: error.span().start.file, lineno: error.span().start.line, colno: error.span().start.col }, error.description())
+        Errors::one(
+            &Location {
+                file_name: error.span().start.file,
+                lineno: error.span().start.line,
+                colno: error.span().start.col,
+            },
+            error.description(),
+        )
     }
 }
 
@@ -30,7 +41,9 @@ impl Errors {
     }
 
     pub fn one(loc: &Location, err: &str) -> Errors {
-        Errors { errors: vec![error_msg(&loc, &err)] }
+        Errors {
+            errors: vec![error_msg(&loc, &err)],
+        }
     }
 
     pub fn append(&mut self, mut other: Errors) {

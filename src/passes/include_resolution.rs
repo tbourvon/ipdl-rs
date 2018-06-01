@@ -1,8 +1,12 @@
-use std::path::{PathBuf};
-use std::collections::{HashMap, HashSet};
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
 use ast::{Location, TUId};
-use parser::{parse_file, ParseTree};
 use errors::Errors;
+use parser::{parse_file, ParseTree};
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 
 pub struct IncludeResolver<'a> {
     include_dirs: &'a [PathBuf],
@@ -22,7 +26,7 @@ impl<'a> IncludeResolver<'a> {
     pub fn get_include(&self, include_name: &str) -> Option<TUId> {
         match self.include_files.get(include_name) {
             Some(ref path) => self.id_file_map.get_tuid(path),
-            None => None
+            None => None,
         }
     }
 
@@ -38,8 +42,11 @@ impl<'a> IncludeResolver<'a> {
 
             if new_include_path.exists() {
                 if let Ok(canonical_new_include_path) = new_include_path.canonicalize() {
-                    let new_id = self.id_file_map.resolve_file_name(&canonical_new_include_path);
-                    self.include_files.insert(String::from(include_name), canonical_new_include_path);
+                    let new_id = self
+                        .id_file_map
+                        .resolve_file_name(&canonical_new_include_path);
+                    self.include_files
+                        .insert(String::from(include_name), canonical_new_include_path);
                     return Some(new_id);
                 }
             }
@@ -55,15 +62,28 @@ impl<'a> IncludeResolver<'a> {
     }
 
     #[allow(needless_pass_by_value)]
-    pub fn resolve_includes(&mut self, parse_tree: ParseTree) -> Result<(TUId, HashMap<TUId, ParseTree>), Errors> {
+    pub fn resolve_includes(
+        &mut self,
+        parse_tree: ParseTree,
+    ) -> Result<(TUId, HashMap<TUId, ParseTree>), Errors> {
         let canonical_file_path = match parse_tree.file_path.canonicalize() {
             Ok(cfp) => cfp,
             Err(_) => {
-                return Err(Errors::one(&Location { file_name: parse_tree.file_path.clone(), lineno: 0, colno: 0}, &format!("can't locate file specified on the command line `{}'", parse_tree.file_path.display())))
-            },
+                return Err(Errors::one(
+                    &Location {
+                        file_name: parse_tree.file_path.clone(),
+                        lineno: 0,
+                        colno: 0,
+                    },
+                    &format!(
+                        "can't locate file specified on the command line `{}'",
+                        parse_tree.file_path.display()
+                    ),
+                ))
+            }
         };
 
-        let mut work_list : Vec<(PathBuf, Vec<PathBuf>)> = Vec::new();
+        let mut work_list: Vec<(PathBuf, Vec<PathBuf>)> = Vec::new();
         let mut parsed_files = HashMap::new();
         let mut visited_files = HashSet::new();
 
@@ -81,7 +101,7 @@ impl<'a> IncludeResolver<'a> {
                         Ok(tu) => tu,
                         Err(err) => {
                             Self::print_include_context(&include_context);
-                            return Err(Errors::from(err))
+                            return Err(Errors::from(err));
                         }
                     }
                 };
@@ -89,12 +109,28 @@ impl<'a> IncludeResolver<'a> {
                 let mut include_errors = Errors::none();
 
                 for include in &curr_parse_tree.translation_unit.data.includes {
-                    let include_filename = format!("{}{}{}", include.data.id.data, ".ipdl", if include.data.protocol.is_some() {""} else {"h"});
+                    let include_filename = format!(
+                        "{}{}{}",
+                        include.data.id.data,
+                        ".ipdl",
+                        if include.data.protocol.is_some() {
+                            ""
+                        } else {
+                            "h"
+                        }
+                    );
                     let include_id = match self.resolve_include(&include_filename) {
                         Some(tuid) => tuid,
                         None => {
-                            include_errors.append_one(&Location { file_name: PathBuf::from(include_filename.clone()), lineno: 0, colno: 0 }, &format!("Cannot resolve include {}", include_filename));
-                            continue
+                            include_errors.append_one(
+                                &Location {
+                                    file_name: PathBuf::from(include_filename.clone()),
+                                    lineno: 0,
+                                    colno: 0,
+                                },
+                                &format!("Cannot resolve include {}", include_filename),
+                            );
+                            continue;
                         }
                     };
 
@@ -106,7 +142,13 @@ impl<'a> IncludeResolver<'a> {
                     new_include_context.push(curr_file.clone());
 
                     visited_files.insert(include_id);
-                    new_work_list.push((self.include_files.get(&include_filename).expect("Resolve include is broken").clone(), new_include_context));
+                    new_work_list.push((
+                        self.include_files
+                            .get(&include_filename)
+                            .expect("Resolve include is broken")
+                            .clone(),
+                        new_include_context,
+                    ));
                 }
 
                 if !include_errors.is_empty() {
@@ -122,7 +164,6 @@ impl<'a> IncludeResolver<'a> {
 
         Ok((file_id, parsed_files))
     }
-
 }
 
 pub struct TUIdFileMap {
